@@ -12,12 +12,16 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import co.wlue.pageturner.utils.FixedDoubleStack;
+import co.wlue.pageturner.utils.FixedStack;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -33,6 +37,7 @@ public class MainActivity extends ActionBarActivity {
     private int smoothFactor;
     private ArrayList<Double> frequencies;
     private String[] noteNames;
+    private Switch methodSelector;
 
 
 
@@ -41,6 +46,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         btnStartStop = (Button) findViewById(R.id.btn_start_stop);
+        methodSelector = (Switch) findViewById(R.id.method_selector);
         txtFrequency = (TextView) findViewById(R.id.txt_frequency);
         txtStrength = (TextView) findViewById(R.id.txt_strength);
         txtNote = (TextView) findViewById(R.id.txt_note);
@@ -90,8 +96,14 @@ public class MainActivity extends ActionBarActivity {
         } else {
             started = true;
             btnStartStop.setText("Stop");
-            recordTask = new RecordAudio();
-            recordTask.execute();
+            if(!methodSelector.isChecked()) {
+                recordTask = new RecordAudio();
+                recordTask.execute();
+            } else {
+                recordTask2 = new RecordAudio2();
+                recordTask2.execute();
+            }
+
         }
 
 
@@ -106,6 +118,7 @@ public class MainActivity extends ActionBarActivity {
     int samplingFrequency = 8000;                             // Sample rate in Hz
 
     RecordAudio recordTask;                             // Creates a Record Audio command
+    RecordAudio2 recordTask2;                             // Creates a Record Audio command
     boolean started = false;
     private RealDoubleFFT transformer;
 
@@ -288,6 +301,97 @@ public class MainActivity extends ActionBarActivity {
         BigDecimal bd = new BigDecimal(value);
         bd = bd.setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
+    }
+
+    private class RecordAudio2 extends AsyncTask<Void, double[], Void> {
+
+        AudioRecord audioRecord;
+        @Override
+        protected Void doInBackground(Void... params){
+
+        /*Calculates the fft and frequency of the input*/
+            //try{
+            transformer = new RealDoubleFFT(sampleSize);
+            int bufferSize = AudioRecord.getMinBufferSize(samplingFrequency, channelConfig, audioEncoding);                // Gets the minimum buffer needed
+            audioRecord = new AudioRecord(audioSource, samplingFrequency, channelConfig, audioEncoding, bufferSize);   // The RAW PCM sample recording
+
+            int bufferReadResult;
+
+            short[] buffer = new short[sampleSize];          // Save the raw PCM samples as short bytes
+            double[] toTransform = new double[sampleSize];
+            try{
+                audioRecord.startRecording();
+            }
+            catch(IllegalStateException e){
+                Log.e("Recording failed", e.toString());
+
+            }
+            while (started) {
+                bufferReadResult = audioRecord.read(buffer, 0, sampleSize);
+                if(isCancelled())
+                    break;
+
+                for (int i = 0; i < sampleSize && i < bufferReadResult; i++) {
+                    toTransform[i] = (double) buffer[i] / 32768.0; // signed 16 bit
+                }
+
+                transformer.ft(toTransform);
+
+                publishProgress(toTransform);
+                if(isCancelled())
+                    break;
+            }
+
+            try{
+                audioRecord.stop();
+            }
+            catch(IllegalStateException e){
+                Log.e("Stop failed", e.toString());
+
+            }
+
+            return null;
+        }
+
+        protected void onProgressUpdate(double[]... strengths){
+            //print the frequency
+            FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(6);
+            for (int i = 0; i < strengths[0].length; i++)
+            {
+                double frequency = (i)*(samplingFrequency/2)/sampleSize;
+                double strength = strengths[0][i];
+
+                maxValues.add(strength,frequency);
+            }
+
+            Double[] maximums = maxValues.getTop();
+            addFrequencyToHistory(maximums[1], maximums[0]);
+            double[] currentValues = getAverageFrequency();
+
+            int indexOfGuessedFrequency = getIndexOfClosestFrequency(currentValues[0]);
+            double guessedFrequency = frequencies.get(indexOfGuessedFrequency);
+
+
+            CharSequence guessedNote = Html.fromHtml(noteNames[indexOfGuessedFrequency]);
+
+            txtFrequency.setText(Double.toString(guessedFrequency));
+            txtNote.setText(guessedNote);
+            txtStrength.setText(Double.toString(round(currentValues[1],5)));
+
+        }
+
+        protected void onPostExecute(Void result) {
+            try{
+                audioRecord.stop();
+            }
+            catch(IllegalStateException e){
+                Log.e("Stop failed", e.toString());
+
+            }
+            recordTask.cancel(true);
+
+        }
+
     }
 
 }
