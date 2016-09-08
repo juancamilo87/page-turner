@@ -264,6 +264,15 @@ public class MainActivity extends ActionBarActivity {
         return binarySearch(frequencies, 0, frequencies.size()-1, frequency);
     }
 
+    public int[] getIndexesOfClosestFrequency(Double[] frequencyArray)
+    {
+        int[] result = new int[frequencyArray.length];
+        for(int i = 0; i< frequencyArray.length; i++) {
+            result[i] = binarySearch(frequencies,0,frequencies.size()-1, frequencyArray[0]);
+        }
+        return result;
+    }
+
     public static int binarySearch (ArrayList<Double> arr, int first, int last, double key)
     {
 
@@ -358,25 +367,27 @@ public class MainActivity extends ActionBarActivity {
             FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(6);
             for (int i = 0; i < strengths[0].length; i++)
             {
-                double frequency = (i)*(samplingFrequency/2)/sampleSize;
                 double strength = strengths[0][i];
+                double frequency = (i)*(samplingFrequency/2)/sampleSize;
 
                 maxValues.add(strength,frequency);
             }
 
-            Double[] maximums = maxValues.getTop();
-            addFrequencyToHistory(maximums[1], maximums[0]);
-            double[] currentValues = getAverageFrequency();
+//            Double[] maximums = maxValues.getTop();
+//            addFrequencyToHistory(maximums[1], maximums[0]);
+//            double[] currentValues = getAverageFrequency();
 
-            int indexOfGuessedFrequency = getIndexOfClosestFrequency(currentValues[0]);
-            double guessedFrequency = frequencies.get(indexOfGuessedFrequency);
+            int[] indexesOfGuessedFrequency = getIndexesOfClosestFrequency(maxValues.getStackTwo());
+            double[] guessedFrequencies = new double[indexesOfGuessedFrequency.length];
+            for(int i = 0; i<indexesOfGuessedFrequency.length-1; i++){
+                guessedFrequencies[i] = frequencies.get(indexesOfGuessedFrequency[i]);
+            }
 
+            CharSequence guessedNote = Html.fromHtml(noteNames[indexesOfGuessedFrequency[0]]);
 
-            CharSequence guessedNote = Html.fromHtml(noteNames[indexOfGuessedFrequency]);
-
-            txtFrequency.setText(Double.toString(guessedFrequency));
+            txtFrequency.setText(Double.toString(guessedFrequencies[0]));
             txtNote.setText(guessedNote);
-            txtStrength.setText(Double.toString(round(currentValues[1],5)));
+            txtStrength.setText(Double.toString(round(maxValues.getTop()[0],5)));
 
         }
 

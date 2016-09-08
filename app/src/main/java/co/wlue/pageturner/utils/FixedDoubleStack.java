@@ -103,4 +103,14 @@ public class FixedDoubleStack<T extends Comparable<T>> {
         obj[1] = (T) stackTwo[i];
         return obj;
     }
+
+    @SuppressWarnings("unchecked")
+    public T[] getStackOne() {
+        return (T[]) stackOne;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T[] getStackTwo() {
+        return (T[]) stackTwo;
+    }
 }
