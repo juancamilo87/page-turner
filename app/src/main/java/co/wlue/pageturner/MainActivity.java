@@ -27,6 +27,8 @@ import co.wlue.pageturner.utils.FixedStack;
 public class MainActivity extends ActionBarActivity {
 
 
+    public static final int numberOfOvertones = 3;
+
     private Button btnStartStop;
     private TextView txtFrequency;
     private TextView txtStrength;
@@ -36,6 +38,7 @@ public class MainActivity extends ActionBarActivity {
     private int historyIndex;
     private int smoothFactor;
     private ArrayList<Double> frequencies;
+    private ArrayList<Double[]> frequenciesWithOvertones;
     private String[] noteNames;
     private Switch methodSelector;
 
@@ -61,6 +64,7 @@ public class MainActivity extends ActionBarActivity {
         }
 
         frequencies = getAllFrequencies((double) getResources().getInteger(R.integer.A4));
+        frequenciesWithOvertones = getAllFrequencies((double) getResources().getInteger(R.integer.A4), numberOfOvertones);
         noteNames = getResources().getStringArray(R.array.notes);
 
     }
@@ -259,17 +263,35 @@ public class MainActivity extends ActionBarActivity {
         return allFrequencies;
     }
 
+    public static ArrayList<Double[]> getAllFrequencies(double A4frequency, int numberOfOvertones) {
+        //57 half steps down from A4
+        //50 half steps up from A4
+        ArrayList<Double[]> allFrequencies = new ArrayList<>();
+        Double[] newFrequency = new Double[numberOfOvertones];
+        for(int i = -57; i<51; i++)
+        {
+            double baseFrequency = round(A4frequency*Math.pow(Math.pow(2,(1/(double)12)),i),2);
+            for(int j = 0; j<numberOfOvertones; j++) {
+                newFrequency[j] = baseFrequency*(j+1);
+            }
+            allFrequencies.add(newFrequency);
+        }
+
+        return allFrequencies;
+    }
+
     public int getIndexOfClosestFrequency(double frequency)
     {
         return binarySearch(frequencies, 0, frequencies.size()-1, frequency);
     }
 
-    public int[] getIndexesOfClosestFrequency(Double[] frequencyArray)
+    public int getIndexOfClosestFrequencyWithOvertones(Double[] frequencyArray)
     {
-        int[] result = new int[frequencyArray.length];
-        for(int i = 0; i< frequencyArray.length; i++) {
-            result[i] = binarySearch(frequencies,0,frequencies.size()-1, frequencyArray[0]);
-        }
+        int result;
+        Double[] orderedFrequencies = frequencyArray;
+        Arrays.sort(orderedFrequencies);
+        result = binarySearch(frequenciesWithOvertones,0,frequenciesWithOvertones.size()-1, orderedFrequencies);
+
         return result;
     }
 
@@ -302,6 +324,54 @@ public class MainActivity extends ActionBarActivity {
             return binarySearch(arr, first, mid - 1, key);
         else
             return binarySearch(arr, mid + 1, last, key);
+    }
+
+
+
+    public static int binarySearch (ArrayList<Double[]> arr, int first, int last, Double[] key)
+    {
+
+        if (first > last) {
+            // if either first or last is negative, return the first element.
+            if(first<0||last<0)
+                return 0;
+                // if either first or last are greater than arr length, return the last element.
+            else if(first>=arr.size()-1||last>=arr.size()-1)
+                return arr.size()-1;
+                // otherwise, get values in the array for indecies first and last, compare then to
+                // your key and return the closest.
+            else
+            {
+                Double[] firstVal = arr.get(first);
+                Double[] lastVal = arr.get(last);
+                if(distance(firstVal,key)<distance(lastVal,key))
+                    return first;
+                else
+                    return last;
+            }
+        }
+        int mid = first + (last - first)/2;
+
+        if(distance(arr.get(mid),key) == 0)
+            return mid;
+        else if (distance(arr.get(mid),key) > 0)
+            return binarySearch(arr, first, mid - 1, key);
+        else
+            return binarySearch(arr, mid + 1, last, key);
+    }
+
+    /**
+     * Returns the distance between the two arrays giving decaying importance to each position.
+     * @param values
+     * @param values2
+     * @return
+     */
+    public static double distance(Double[] values, Double[] values2) {
+        double distance = 0;
+        for(int i= 0; i<values.length; i++) {
+            distance += Math.pow(values[i] - values2[i],2)/(i+1);
+        }
+        return Math.sqrt(distance);
     }
 
     public static double round(double value, int places) {
@@ -364,7 +434,7 @@ public class MainActivity extends ActionBarActivity {
 
         protected void onProgressUpdate(double[]... strengths){
             //print the frequency
-            FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(6);
+            FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(numberOfOvertones);
             for (int i = 0; i < strengths[0].length; i++)
             {
                 double strength = strengths[0][i];
@@ -377,15 +447,13 @@ public class MainActivity extends ActionBarActivity {
 //            addFrequencyToHistory(maximums[1], maximums[0]);
 //            double[] currentValues = getAverageFrequency();
 
-            int[] indexesOfGuessedFrequency = getIndexesOfClosestFrequency(maxValues.getStackTwo());
-            double[] guessedFrequencies = new double[indexesOfGuessedFrequency.length];
-            for(int i = 0; i<indexesOfGuessedFrequency.length-1; i++){
-                guessedFrequencies[i] = frequencies.get(indexesOfGuessedFrequency[i]);
-            }
+            int indexOfGuessedFrequency = getIndexOfClosestFrequencyWithOvertones(maxValues.getStackTwo());
 
-            CharSequence guessedNote = Html.fromHtml(noteNames[indexesOfGuessedFrequency[0]]);
+            double guessedFrequency = frequencies.get(indexOfGuessedFrequency);
 
-            txtFrequency.setText(Double.toString(guessedFrequencies[0]));
+            CharSequence guessedNote = Html.fromHtml(noteNames[indexOfGuessedFrequency]);
+
+            txtFrequency.setText(Double.toString(guessedFrequency));
             txtNote.setText(guessedNote);
             txtStrength.setText(Double.toString(round(maxValues.getTop()[0],5)));
 
