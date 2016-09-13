@@ -10,6 +10,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         style="@style/Base.TextAppearance.AppCompat.Headline"/>
+    <Button
+        android:id="@+id/midi_reader_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Read midi"
+        android:layout_gravity="center_horizontal"/>
     <Switch
         android:id="@+id/method_selector"
         android:layout_width="wrap_content"

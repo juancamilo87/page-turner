@@ -1,5 +1,6 @@
 package co.wlue.pageturner;
 
+import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -20,8 +21,8 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import co.wlue.pageturner.fft.RealDoubleFFT;
 import co.wlue.pageturner.utils.FixedDoubleStack;
-import co.wlue.pageturner.utils.FixedStack;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -66,6 +67,14 @@ public class MainActivity extends ActionBarActivity {
         frequencies = getAllFrequencies((double) getResources().getInteger(R.integer.A4));
         frequenciesWithOvertones = getAllFrequencies((double) getResources().getInteger(R.integer.A4), numberOfOvertones);
         noteNames = getResources().getStringArray(R.array.notes);
+
+        findViewById(R.id.midi_reader_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(getApplicationContext(),MidiViewerActivity.class);
+                startActivity(intent);
+            }
+        });
 
     }
 
