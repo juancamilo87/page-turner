@@ -1,20 +1,23 @@
 package co.wlue.pageturner.utils;
 
+import java.lang.reflect.Array;
+
 /**
  * Created by researcher on 05/09/16.
  */
 public class FixedDoubleStack<T extends Comparable<T>> {
 
 
-    private Object[] stackOne;
-    private Object[] stackTwo;
+    private T[] stackOne;
+    private T[] stackTwo;
+    private Class<T> classType;
     private int size;
     private int bottom;
 
-    public FixedDoubleStack(int size) {
-
-        this.stackOne = new Object[size];
-        this.stackTwo = new Object[size];
+    public FixedDoubleStack(int size, Class<T> tClass) {
+        classType = tClass;
+        this.stackOne = (T[]) Array.newInstance(classType, size);
+        this.stackTwo = (T[]) Array.newInstance(classType, size);
         this.bottom = -1;
         this.size = size;
     }
@@ -23,30 +26,36 @@ public class FixedDoubleStack<T extends Comparable<T>> {
     public boolean add(T objOne, T objTwo) {
         boolean reallyInserted = false;
         boolean inserted = false;
-        for(int i = bottom; i>=0&&!inserted; i--) {
-            if(get(i)[0].compareTo(objOne) > 0) {
-                reallyInserted = insert(objOne, objTwo,i+1);
-                inserted = true;
+        if(elements()==0) {
+            reallyInserted = insert(objOne, objTwo, 0);
+        }
+        else {
+            for(int i = elements() - 1; i>=0&&!inserted; i--) {
+                if(get(i)[0].compareTo(objOne) > 0) {
+                    reallyInserted = insert(objOne, objTwo,i+1);
+                    inserted = true;
+                }
+            }
+            if(!inserted) {
+                reallyInserted = insert(objOne, objTwo, 0);
             }
         }
         return reallyInserted;
     }
 
-    @SuppressWarnings("unchecked")
     public T[] getBottom()
     {
         if (bottom < 0) return null;
 
-        T[] obj = (T[]) new Object[2];
+        T[] obj = (T[]) Array.newInstance(classType,2);
         obj[0] = (T) stackOne[bottom];
         obj[1] = (T) stackTwo[bottom];
         return obj;
     }
 
-    @SuppressWarnings("unchecked")
     public T[] getTop()
     {
-        T[] obj = (T[]) new Object[2];
+        T[] obj = (T[]) Array.newInstance(classType,2);
         obj[0] = (T) stackOne[0];
         obj[1] = (T) stackTwo[0];
         return obj;
@@ -96,21 +105,20 @@ public class FixedDoubleStack<T extends Comparable<T>> {
         return bottom + 1;
     }
 
-    @SuppressWarnings("unchecked")
-    public T[] get(int i) {
-        T[] obj = (T[]) new Object[2];
+    private T[] get(int i) {
+        T[] obj = (T[]) Array.newInstance(classType,2);
         obj[0] = (T) stackOne[i];
         obj[1] = (T) stackTwo[i];
         return obj;
     }
 
-    @SuppressWarnings("unchecked")
+
     public T[] getStackOne() {
-        return (T[]) stackOne;
+        return stackOne;
     }
 
-    @SuppressWarnings("unchecked")
+
     public T[] getStackTwo() {
-        return (T[]) stackTwo;
+        return stackTwo;
     }
 }

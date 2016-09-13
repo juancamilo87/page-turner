@@ -28,7 +28,7 @@ import co.wlue.pageturner.utils.FixedDoubleStack;
 public class MainActivity extends ActionBarActivity {
 
 
-    public static final int numberOfOvertones = 3;
+    public static final int numberOfOvertones = 5;
 
     private Button btnStartStop;
     private TextView txtFrequency;
@@ -276,9 +276,9 @@ public class MainActivity extends ActionBarActivity {
         //57 half steps down from A4
         //50 half steps up from A4
         ArrayList<Double[]> allFrequencies = new ArrayList<>();
-        Double[] newFrequency = new Double[numberOfOvertones];
         for(int i = -57; i<51; i++)
         {
+            Double[] newFrequency = new Double[numberOfOvertones];
             double baseFrequency = round(A4frequency*Math.pow(Math.pow(2,(1/(double)12)),i),2);
             for(int j = 0; j<numberOfOvertones; j++) {
                 newFrequency[j] = baseFrequency*(j+1);
@@ -298,7 +298,9 @@ public class MainActivity extends ActionBarActivity {
     {
         int result;
         Double[] orderedFrequencies = frequencyArray;
+        Log.d("FreqVals","First ordered: " + orderedFrequencies[0] + " not: " + frequencyArray[0]);
         Arrays.sort(orderedFrequencies);
+        Log.d("FreqVals2","First ordered: " + orderedFrequencies[0] + " not: " + frequencyArray[0]);
         result = binarySearch(frequenciesWithOvertones,0,frequenciesWithOvertones.size()-1, orderedFrequencies);
 
         return result;
@@ -377,10 +379,10 @@ public class MainActivity extends ActionBarActivity {
      */
     public static double distance(Double[] values, Double[] values2) {
         double distance = 0;
-        for(int i= 0; i<values.length; i++) {
-            distance += Math.pow(values[i] - values2[i],2)/(i+1);
+        for(int i= 0; i<values2.length; i++) {
+            distance += (values[i] - values2[i])/Math.pow(i+1,2);
         }
-        return Math.sqrt(distance);
+        return distance;
     }
 
     public static double round(double value, int places) {
@@ -443,7 +445,7 @@ public class MainActivity extends ActionBarActivity {
 
         protected void onProgressUpdate(double[]... strengths){
             //print the frequency
-            FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(numberOfOvertones);
+            FixedDoubleStack<Double> maxValues = new FixedDoubleStack<>(numberOfOvertones, Double.class);
             for (int i = 0; i < strengths[0].length; i++)
             {
                 double strength = strengths[0][i];
@@ -455,16 +457,21 @@ public class MainActivity extends ActionBarActivity {
 //            Double[] maximums = maxValues.getTop();
 //            addFrequencyToHistory(maximums[1], maximums[0]);
 //            double[] currentValues = getAverageFrequency();
+            if(maxValues.elements()>0) {
+                int indexOfGuessedFrequency = getIndexOfClosestFrequencyWithOvertones(maxValues.getStackTwo());
+                Log.d("INDEX VALUE", "Index: " + indexOfGuessedFrequency + " frequency: " + maxValues.getStackTwo()[0]);
 
-            int indexOfGuessedFrequency = getIndexOfClosestFrequencyWithOvertones(maxValues.getStackTwo());
+                double guessedFrequency = frequencies.get(indexOfGuessedFrequency);
 
-            double guessedFrequency = frequencies.get(indexOfGuessedFrequency);
+                CharSequence guessedNote = Html.fromHtml(noteNames[indexOfGuessedFrequency]);
 
-            CharSequence guessedNote = Html.fromHtml(noteNames[indexOfGuessedFrequency]);
+                txtFrequency.setText(Double.toString(guessedFrequency));
+                txtNote.setText(guessedNote);
+                txtStrength.setText(Double.toString(round(maxValues.getTop()[0],5)));
+            } else {
+                Log.d("AUDIO_RECORDER","No elements");
+            }
 
-            txtFrequency.setText(Double.toString(guessedFrequency));
-            txtNote.setText(guessedNote);
-            txtStrength.setText(Double.toString(round(maxValues.getTop()[0],5)));
 
         }
 
@@ -476,7 +483,7 @@ public class MainActivity extends ActionBarActivity {
                 Log.e("Stop failed", e.toString());
 
             }
-            recordTask.cancel(true);
+            recordTask2.cancel(true);
 
         }
 
