@@ -362,11 +362,22 @@ public class MainActivity extends ActionBarActivity {
             }
         }
         int mid = first + (last - first)/2;
+        int mid2;
+        if(mid==last && mid!=first) {
+            mid2 = mid;
+            mid--;
+        } else if(mid==first && mid!=last) {
+            mid2 = mid + 1;
+        } else if(mid == first && mid == last) {
+            mid2 = mid;
+        } else {
+            mid2 = mid + 1;
+        }
 
         if(distance(arr.get(mid),key) == 0)
             return mid;
-        else if (distance(arr.get(mid),key) > 0)
-            return binarySearch(arr, first, mid - 1, key);
+        else if (distance(arr.get(mid2),key) > distance(arr.get(mid),key))
+            return binarySearch(arr, first, mid, key);
         else
             return binarySearch(arr, mid + 1, last, key);
     }
@@ -380,9 +391,9 @@ public class MainActivity extends ActionBarActivity {
     public static double distance(Double[] values, Double[] values2) {
         double distance = 0;
         for(int i= 0; i<values2.length; i++) {
-            distance += (values[i] - values2[i])/Math.pow(i+1,2);
+            distance += Math.pow(values[i] - values2[i],2)/Math.pow(i+1,4);
         }
-        return distance;
+        return Math.sqrt(distance);
     }
 
     public static double round(double value, int places) {
