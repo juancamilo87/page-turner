@@ -140,7 +140,6 @@ public class NotesArrayList extends ArrayList<NotesWithTick> {
             return binarySearchIndex(arr, mid + 1, last, key);
     }
 
-    //TODO make it return floor and not actual value
     private static int binarySearchFloorIndex (NotesArrayList arr, int first, int last, long key)
     {
 

@@ -36,7 +36,6 @@ public class NotesWithTick implements Comparable<NotesWithTick>{
         return false;
     }
 
-    //TODO: Add middle lengths when note has a dot next to it
     public void addLength(long newTick, int noteValue, int[] resolutionArray) {
         Note note = getNote(noteValue);
         long tickDelta = newTick - tick;
