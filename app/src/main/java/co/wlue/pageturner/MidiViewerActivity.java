@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
@@ -18,8 +19,11 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -28,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.zip.CRC32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import co.wlue.pageturner.midi_utils.ClefSymbol;
 import co.wlue.pageturner.midi_utils.MidiFile;
@@ -36,14 +42,17 @@ import co.wlue.pageturner.midi_utils.MidiOptions;
 import co.wlue.pageturner.midi_utils.MidiPlayer;
 import co.wlue.pageturner.midi_utils.SheetMusic;
 import co.wlue.pageturner.midi_utils.TimeSigSymbol;
+import co.wlue.pageturner.utils.LicenceKeyInstance;
 import co.wlue.pageturner.utils.Note;
 import co.wlue.pageturner.utils.NotesArrayList;
 import co.wlue.pageturner.utils.SeeScoreView;
 import uk.co.dolphin_com.sscore.Component;
 import uk.co.dolphin_com.sscore.Header;
+import uk.co.dolphin_com.sscore.LoadOptions;
 import uk.co.dolphin_com.sscore.SScore;
 import uk.co.dolphin_com.sscore.Tempo;
 import uk.co.dolphin_com.sscore.ex.ScoreException;
+import uk.co.dolphin_com.sscore.ex.XMLValidationException;
 
 /**
  * Created by researcher on 12/09/16.
@@ -313,20 +322,29 @@ public class MidiViewerActivity extends Activity {
         new Thread(new Runnable(){ // load file on background thread
 
             public void run() {
+
                 byte[] data = readRawByteArray(getResources().openRawResource(R.raw.totoro));
-                final SScore score;
+
                 try {
-                    score = SScore.loadXMLData(data,null);
+//                    LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
+//                    final SScore score = SScore.loadXMLData(data,loadOptions);
+//                    final SScore score = SScore.loadXMLData(data,null);
+                    File extDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    File file = new File(extDir,"totoro.mxl");
+                    Log.d("File",file.toString());
+                    final SScore score = loadMXLFile(file);
                     new Handler(Looper.getMainLooper()).post(new Runnable(){
 
                         public void run() {
                             if (score != null)
                             {
+                                currentScore = score;
                                 showScore(score); // update score in SeeScoreView on foreground thread
                             }
                         }
                     });
-                } catch (ScoreException e) {
+                } catch (Exception e) {
+                    Log.d("ERROR", "error");
                     e.printStackTrace();
                 }
 
@@ -571,5 +589,100 @@ public class MidiViewerActivity extends Activity {
     {
         Header header = score.getHeader();
         return header.work_title + " - " + header.composer;
+    }
+
+    /**
+     * Load the given xml file and return a SScore.
+     *
+     * @param file the file
+     * @return the score
+     */
+    private SScore loadXMLFile(File file)
+    {
+        if (!file.getName().endsWith(".xml"))
+            return null;
+        try
+        {
+            LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
+            return SScore.loadXMLFile(file, loadOptions);
+        }
+        catch (XMLValidationException e) {
+            Log.w("sscore", "loadfile <" + file + "> xml validation error: " + e.getMessage());
+        } catch (ScoreException e) {
+            Log.w("sscore", "loadfile <" + file + "> error:" + e);
+        }
+        return null;
+    }
+
+    /**
+     * load a .mxl file and return a {@link SScore}
+     * We use a ZipInputStream to decompress the .mxl data into a UTF-8 XML byte buffer
+     *
+     * @param file a file which can be opened with FileInputStream
+     * @return a {@link SScore}
+     */
+    private SScore loadMXLFile(File file)
+    {
+        if (!file.getName().endsWith(".mxl"))
+            return null;
+
+        InputStream is;
+        try {
+            is = new FileInputStream(file);
+            ZipInputStream zis = null;
+            try
+            {
+                zis = new ZipInputStream(new BufferedInputStream(is));
+                ZipEntry ze;
+                while ((ze = zis.getNextEntry()) != null) {
+                    if (!ze.getName().startsWith("META-INF") // ignore META-INF/ and container.xml
+                            && ze.getName() != "container.xml")
+                    {
+                        // read from Zip into buffer and copy into ByteArrayOutputStream which is converted to byte array of whole file
+                        ByteArrayOutputStream os = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[1024];
+                        int count;
+                        while ((count = zis.read(buffer)) != -1) { // load in 1K chunks
+                            os.write(buffer, 0, count);
+                        }
+                        try
+                        {
+                            LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
+                            return SScore.loadXMLData(os.toByteArray(), loadOptions);
+                        }
+                        catch (XMLValidationException e)
+                        {
+                            Log.w("sscore", "loadfile <" + file + "> xml validation error: " + e.getMessage());
+                        }
+                        catch (ScoreException e)
+                        {
+                            Log.w("sscore", "loadfile <" + file + "> error:" + e);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                Log.w("Open", "file open error " + file, e);
+                e.printStackTrace();
+            }
+            finally {
+                if (zis != null)
+                    zis.close();
+            }
+        } catch (FileNotFoundException e1) {
+            Log.w("Open", "file not found error " + file, e1);
+            e1.printStackTrace();
+        } catch (IOException e) {
+            Log.w("Open", "io exception " + file, e);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * load the SeeScoreLib.so library
+     */
+    static {
+        System.loadLibrary("stlport_shared");
+        System.loadLibrary("SeeScoreLib");
     }
 }
