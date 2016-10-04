@@ -20,6 +20,7 @@ import android.widget.TextView;
 
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -329,10 +330,10 @@ public class MidiViewerActivity extends Activity {
 //                    LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
 //                    final SScore score = SScore.loadXMLData(data,loadOptions);
 //                    final SScore score = SScore.loadXMLData(data,null);
-                    File extDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    File file = new File(extDir,"totoro.mxl");
-                    Log.d("File",file.toString());
-                    final SScore score = loadMXLFile(file);
+//                    File extDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+//                    File file = new File(extDir,"totoro.mxl");
+
+                    final SScore score = loadMXLFile(data);
                     new Handler(Looper.getMainLooper()).post(new Runnable(){
 
                         public void run() {
@@ -618,21 +619,23 @@ public class MidiViewerActivity extends Activity {
      * load a .mxl file and return a {@link SScore}
      * We use a ZipInputStream to decompress the .mxl data into a UTF-8 XML byte buffer
      *
-     * @param file a file which can be opened with FileInputStream
+     * @param data byte array of MXL file
      * @return a {@link SScore}
      */
-    private SScore loadMXLFile(File file)
+    private SScore loadMXLFile(byte[] data)
     {
-        if (!file.getName().endsWith(".mxl"))
-            return null;
+//        if (!file.getName().endsWith(".mxl"))
+//            return null;
 
-        InputStream is;
+//        InputStream is;
         try {
-            is = new FileInputStream(file);
+
+//            is = new FileInputStream(file);
             ZipInputStream zis = null;
             try
             {
-                zis = new ZipInputStream(new BufferedInputStream(is));
+                zis = new ZipInputStream(new ByteArrayInputStream(data));
+//                zis = new ZipInputStream(new BufferedInputStream(is));
                 ZipEntry ze;
                 while ((ze = zis.getNextEntry()) != null) {
                     if (!ze.getName().startsWith("META-INF") // ignore META-INF/ and container.xml
@@ -652,27 +655,24 @@ public class MidiViewerActivity extends Activity {
                         }
                         catch (XMLValidationException e)
                         {
-                            Log.w("sscore", "loadfile <" + file + "> xml validation error: " + e.getMessage());
+                            Log.w("sscore", "load byte array xml validation error: " + e.getMessage());
                         }
                         catch (ScoreException e)
                         {
-                            Log.w("sscore", "loadfile <" + file + "> error:" + e);
+                            Log.w("sscore", "load byte array error:" + e);
                         }
                     }
                 }
             } catch (IOException e) {
-                Log.w("Open", "file open error " + file, e);
+                Log.w("Open", "byte array read error", e);
                 e.printStackTrace();
             }
             finally {
                 if (zis != null)
                     zis.close();
             }
-        } catch (FileNotFoundException e1) {
-            Log.w("Open", "file not found error " + file, e1);
-            e1.printStackTrace();
         } catch (IOException e) {
-            Log.w("Open", "io exception " + file, e);
+            Log.w("Open", "io exception ", e);
             e.printStackTrace();
         }
         return null;
