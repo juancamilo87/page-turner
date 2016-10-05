@@ -13,10 +13,12 @@ import android.text.Html;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import java.io.BufferedInputStream;
@@ -47,8 +49,11 @@ import co.wlue.pageturner.utils.LicenceKeyInstance;
 import co.wlue.pageturner.utils.Note;
 import co.wlue.pageturner.utils.NotesArrayList;
 import co.wlue.pageturner.utils.SeeScoreView;
+import co.wlue.pageturner.utils.SystemView;
+import uk.co.dolphin_com.sscore.BarGroup;
 import uk.co.dolphin_com.sscore.Component;
 import uk.co.dolphin_com.sscore.Header;
+import uk.co.dolphin_com.sscore.Item;
 import uk.co.dolphin_com.sscore.LoadOptions;
 import uk.co.dolphin_com.sscore.SScore;
 import uk.co.dolphin_com.sscore.Tempo;
@@ -71,6 +76,7 @@ public class MidiViewerActivity extends Activity {
     private long midiCRC;      /* CRC of the midi bytes */
     private LinearLayout layout; /* THe layout */
     private SheetMusic sheet;    /* The sheet music */
+    private ScrollView sheetScrollView;
 
     /**
      * the View which displays the score
@@ -101,11 +107,18 @@ public class MidiViewerActivity extends Activity {
      */
     private SScore currentScore;
 
+    private Button testBtn1;
+    private Button testBtn2;
+    private Button testBtn3;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_midiviewer);
+        testBtn1 = (Button) findViewById(R.id.btn_test1);
+        testBtn2 = (Button) findViewById(R.id.btn_test2);
+        testBtn3 = (Button) findViewById(R.id.btn_test3);
 //        layout = (LinearLayout) findViewById(R.id.midi_viewer_layout);
 //        new ByteArrayOutputStream();
 //
@@ -222,6 +235,31 @@ public class MidiViewerActivity extends Activity {
 //            e.printStackTrace();
 //        }
 
+        testBtn1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                testOne();
+            }
+        });
+
+        testBtn2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                testTwo();
+            }
+        });
+
+        testBtn3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                testThree();
+            }
+        });
+
+        currentScore = null;
+        currentBar = 0;
+        magnification = 1.0F;
+
         ssview = new SeeScoreView(this, getAssets(), new SeeScoreView.ZoomNotification(){
 
             public void zoom(float scale) {
@@ -251,9 +289,9 @@ public class MidiViewerActivity extends Activity {
         });
 
         hideBeat();
-        ScrollView sv = (ScrollView) findViewById(R.id.scrollView1);
-        sv.addView(ssview);
-        sv.setOnTouchListener(new View.OnTouchListener(){
+        sheetScrollView = (ScrollView) findViewById(R.id.scrollView1);
+        sheetScrollView.addView(ssview);
+        sheetScrollView.setOnTouchListener(new View.OnTouchListener(){
 
             @Override
             public boolean onTouch(View arg0, MotionEvent event) {
@@ -353,6 +391,7 @@ public class MidiViewerActivity extends Activity {
             }
         }).start();
 
+        Log.d("Done","Done");
     }
 
     private void initializeResolutionArray(int resolution) {
@@ -684,5 +723,63 @@ public class MidiViewerActivity extends Activity {
     static {
         System.loadLibrary("stlport_shared");
         System.loadLibrary("SeeScoreLib");
+    }
+
+    private void testOne(){
+        int numBars = currentScore.numBars();
+        Toast.makeText(this, "The number of bars is: " + numBars,Toast.LENGTH_SHORT).show();
+    }
+
+    private int testNumber = 0;
+
+    private void testTwo() {
+        testNumber++;
+        if(testNumber >= currentScore.numBars())
+            testNumber = 1;
+        if(!ssview.setCursorAtBar(testNumber, SeeScoreView.CursorType.box,1000)) {
+            Toast.makeText(this, "Fail",Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private int testNumber2 = 0;
+    private int testNumber3 = 0;
+
+    private void testThree() {
+        Log.d("Called","called");
+        int children = ssview.getChildCount();
+        if(testNumber3>= children) {
+            Toast.makeText(this, "End of score",Toast.LENGTH_SHORT).show();
+            testNumber3 = 0;
+            testNumber2 = 0;
+        }
+        else {
+
+            SystemView sv = (SystemView) ssview.getChildAt(testNumber3);
+
+
+            try {
+                BarGroup bg = currentScore.getBarContents(0,testNumber3);
+                int numItems = bg.items.length;
+                testNumber2++;
+                if(testNumber2>= numItems) {
+                    testNumber2 = 0;
+                    testNumber3++;
+                    testThree();
+                } else {
+
+                    if(bg.items[testNumber2].type == Item.ItemType_note) {
+                        sv.colourItem(bg.items[testNumber2].item_h);
+                    } else {
+                        testThree();
+                    }
+
+                }
+
+            } catch (ScoreException e) {
+                e.printStackTrace();
+            }
+        }
+
+
     }
 }
