@@ -572,6 +572,15 @@ public class SeeScoreView extends LinearLayout  {
 		return false;
 	}
 
+	public SystemView getSystemViewForBar(int barIndex) {
+		for(int i = 0; i< views.size(); i++) {
+			if(views.get(i).containsBar(barIndex)) {
+				return views.get(i);
+			}
+		}
+		return null;
+	}
+
     private SScore score;
     private AssetManager assetManager;
     private int displayDPI;

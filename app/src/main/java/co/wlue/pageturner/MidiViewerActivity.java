@@ -3,10 +3,7 @@ package co.wlue.pageturner;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
@@ -21,33 +18,23 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.zip.CRC32;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import co.wlue.pageturner.midi_utils.ClefSymbol;
 import co.wlue.pageturner.midi_utils.MidiFile;
-import co.wlue.pageturner.midi_utils.MidiFileException;
 import co.wlue.pageturner.midi_utils.MidiOptions;
-import co.wlue.pageturner.midi_utils.MidiPlayer;
 import co.wlue.pageturner.midi_utils.SheetMusic;
-import co.wlue.pageturner.midi_utils.TimeSigSymbol;
 import co.wlue.pageturner.utils.LicenceKeyInstance;
-import co.wlue.pageturner.utils.Note;
-import co.wlue.pageturner.utils.NotesArrayList;
 import co.wlue.pageturner.utils.SeeScoreView;
 import co.wlue.pageturner.utils.SystemView;
 import uk.co.dolphin_com.sscore.BarGroup;
@@ -55,6 +42,7 @@ import uk.co.dolphin_com.sscore.Component;
 import uk.co.dolphin_com.sscore.Header;
 import uk.co.dolphin_com.sscore.Item;
 import uk.co.dolphin_com.sscore.LoadOptions;
+import uk.co.dolphin_com.sscore.NoteItem;
 import uk.co.dolphin_com.sscore.SScore;
 import uk.co.dolphin_com.sscore.Tempo;
 import uk.co.dolphin_com.sscore.ex.ScoreException;
@@ -112,6 +100,8 @@ public class MidiViewerActivity extends Activity {
     private Button testBtn3;
 
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -119,6 +109,8 @@ public class MidiViewerActivity extends Activity {
         testBtn1 = (Button) findViewById(R.id.btn_test1);
         testBtn2 = (Button) findViewById(R.id.btn_test2);
         testBtn3 = (Button) findViewById(R.id.btn_test3);
+
+        noteNames = getResources().getStringArray(R.array.notes);
 //        layout = (LinearLayout) findViewById(R.id.midi_viewer_layout);
 //        new ByteArrayOutputStream();
 //
@@ -275,13 +267,13 @@ public class MidiViewerActivity extends Activity {
 //                        boolean isPlaying = (player.state() == Player.State.Started);
 //                        if (isPlaying)
 //                            player.pause();
-//                        ssview.setCursorAtBar(barIndex, SeeScoreView.CursorType.line, 200);
+//                        ssview.setCursorAtBar(testNumber3, SeeScoreView.CursorType.line, 200);
 //                        if (isPlaying) {
-//                            player.startAt(barIndex, false/*no countIn*/);
+//                            player.startAt(testNumber3, false/*no countIn*/);
 //                        }
 //                    }
 //                    else
-//                        ssview.setCursorAtBar(barIndex, SeeScoreView.CursorType.box, 200);
+//                        ssview.setCursorAtBar(testNumber3, SeeScoreView.CursorType.box, 200);
                 System.out.println("tap system:" + systemIndex + " bar:" + barIndex);
                 for (Component comp : components)
                     System.out.println(comp);
@@ -743,42 +735,119 @@ public class MidiViewerActivity extends Activity {
 
     private int testNumber2 = 0;
     private int testNumber3 = 0;
+    private int testNumber4 = 0;
+
+    private ArrayList<NoteItem> noteItems = null;
 
     private void testThree() {
-        Log.d("Called","called");
+
+        Log.d("Called","called 3");
         int children = ssview.getChildCount();
-        if(testNumber3>= children) {
-            Toast.makeText(this, "End of score",Toast.LENGTH_SHORT).show();
-            testNumber3 = 0;
-            testNumber2 = 0;
-        }
-        else {
+        Log.d("Called", children + " children inside ssview");
+//        for(int i = 0; i< children; i++) {
+//            //Each line of the music sheet
+//            SystemView sv = (SystemView) ssview.getChildAt(testNumber3);
+//            Log.d("Called", "Child: " + i + sv.toString());
+//        }
 
-            SystemView sv = (SystemView) ssview.getChildAt(testNumber3);
-
-
-            try {
-                BarGroup bg = currentScore.getBarContents(0,testNumber3);
-                int numItems = bg.items.length;
-                testNumber2++;
-                if(testNumber2>= numItems) {
+        try {
+            if(noteItems == null) {
+                int partsCount = currentScore.numParts();
+                int barsCount = currentScore.numBars();
+                if(testNumber2==partsCount)
                     testNumber2 = 0;
-                    testNumber3++;
-                    testThree();
-                } else {
-
-                    if(bg.items[testNumber2].type == Item.ItemType_note) {
-                        sv.colourItem(bg.items[testNumber2].item_h);
-                    } else {
-                        testThree();
-                    }
-
+                if(testNumber3== barsCount) {
+                    testNumber3 = 0;
+                    testNumber2++;
                 }
 
-            } catch (ScoreException e) {
-                e.printStackTrace();
+                BarGroup bg = currentScore.getBarContents(testNumber2, testNumber3);
+                int numItems = bg.items.length;
+                if(numItems>0) {
+                    noteItems = new ArrayList<>();
+                    for (int j = 0; j < numItems; j++) {
+                        if (bg.items[j].type == Item.ItemType_note) {
+                            NoteItem theItem = (NoteItem) currentScore.getItemForHandle(testNumber2, testNumber3, bg.items[j].item_h);
+                            if(theItem.midipitch != 0) {
+                                noteItems.add(theItem);
+                            }
+                        }
+                    }
+                    Collections.sort(noteItems, new Comparator<NoteItem>() {
+                        public int compare(NoteItem o1, NoteItem o2) {
+                            if (o1.start == o2.start)
+                                return 0;
+                            return o1.start < o2.start ? -1 : 1;
+                        }
+                    });
+                    if (noteItems.size() > 0) {
+                        NoteItem item = noteItems.remove(0);
+                        SystemView sv = ssview.getSystemViewForBar(testNumber3);
+                        SystemView svTemp = ssview.getSystemViewForBar(testNumber3-1);
+                        if(svTemp!=null) {
+                            svTemp.colourItem(0);
+                        }
+                        if (sv != null) {
+                            sv.colourItem(item.item_h);
+                            CharSequence guessedNote = Html.fromHtml(noteNames[item.midipitch-12]);
+                            Toast.makeText(this,"The note is: " + item.midipitch + " - " + guessedNote, Toast.LENGTH_SHORT).show();
+                            Log.d("Note","The note is: " + item.midipitch + " - " + guessedNote);
+                        }
+                        else
+                            Log.d("Error", "SystemView is null");
+                    }
+                    if (noteItems.size() == 0) {
+                        noteItems = null;
+                        testNumber3++;
+                    }
+                }
+                else {
+                    testNumber3++;
+                    testThree();
+                }
             }
+            else {
+                if(noteItems.size()>0) {
+                    NoteItem item = noteItems.remove(0);
+                    SystemView svTemp = ssview.getSystemViewForBar(testNumber3-1);
+                    if(svTemp!=null) {
+                        svTemp.colourItem(0);
+                    }
+                    SystemView sv = ssview.getSystemViewForBar(testNumber3);
+                    if(sv!=null) {
+                        sv.colourItem(item.item_h);
+                        CharSequence guessedNote = Html.fromHtml(noteNames[item.midipitch-12]);
+                        Toast.makeText(this,"The note is: " + item.midipitch + " - " + guessedNote, Toast.LENGTH_SHORT).show();
+                        Log.d("Note","The note is: " + item.midipitch + " - " + guessedNote);
+                    }
+                    else
+                        Log.d("Error", "SystemView is null");
+                }
+                if(noteItems.size()==0) {
+                    noteItems = null;
+                    testNumber3++;
+                }
+            }
+
+
+
+        } catch (ScoreException e) {
+            e.printStackTrace();
         }
+
+
+
+//        if(testNumber3 >= children) {
+//            Toast.makeText(this, "End of score",Toast.LENGTH_SHORT).show();
+//            testNumber3 = 0;
+//            testNumber2 = 0;
+//        }
+//        else {
+//
+//            SystemView sv = (SystemView) ssview.getChildAt(testNumber3);
+//
+//
+//        }
 
 
     }
