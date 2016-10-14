@@ -19,8 +19,10 @@ import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -111,6 +113,8 @@ public class SeeScoreView extends LinearLayout  {
 		this.magnification = 1.0F;
 		this.zoomNotify = zn;
         this.tapNotify = tn;
+		this.currentLastSystem = 0;
+		this.currentFirstSystem = 0;
 		DisplayMetrics displayMetrics = new DisplayMetrics();
 		Display display = context.getWindowManager().getDefaultDisplay();
 		display.getMetrics(displayMetrics);
@@ -118,6 +122,8 @@ public class SeeScoreView extends LinearLayout  {
 		android.graphics.Point screenSize = new android.graphics.Point();
 		display.getSize(screenSize);
 		screenHeight = screenSize.y;
+		spaceHeight = 0;
+		viewIsFull = false;
 	}
 
     /**
@@ -149,15 +155,109 @@ public class SeeScoreView extends LinearLayout  {
 
 	private void addSystem(final SSystem sys)
 	{
+		//Each system is 130 height (around) at scale 1.0F
 		systems.addSystem(sys);
-		new Handler(Looper.getMainLooper()).post(new Runnable(){
+		showSystem(sys);
+	}
 
-			public void run() {
-				SystemView sv = new SystemView(getContext(), score, sys, SeeScoreView.this.assetManager, tapNotify);
-				addView(sv);
-				views.add(sv);
-			}
-		});
+	private void showSystem(final SSystem sys) {
+		if(spaceLeftForSystems>0&&!viewIsFull) {
+			new Handler(Looper.getMainLooper()).post(new Runnable(){
+
+				public void run() {
+					final SystemView sv = new SystemView(getContext(), score, sys, SeeScoreView.this.assetManager, tapNotify);
+					addView(sv);
+					views.add(sv);
+					sv.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+						@Override
+						public void onGlobalLayout() {
+							sv.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+							if(sv.getHeight()>spaceLeftForSystems) {
+								removeView(sv);
+								views.remove(sv);
+								currentLastSystem--;
+								viewIsFull = true;
+								Log.d("CurrentSystem2", currentLastSystem +"");
+							} else {
+								spaceLeftForSystems = spaceLeftForSystems - sv.getHeight();
+							}
+						}
+					});
+					currentLastSystem++;
+					Log.d("CurrentSystem", currentLastSystem +"");
+				}
+			});
+		}
+
+	}
+
+	private void showSystems() {
+		currentFirstSystem = currentLastSystem;
+		for(int i = currentLastSystem; i<systems.getSize() && !viewIsFull; i++) {
+			final int index = i;
+			new Handler(Looper.getMainLooper()).post(new Runnable(){
+
+				public void run() {
+					final SystemView sv = new SystemView(getContext(), score, systems.getSystemAt(index), SeeScoreView.this.assetManager, tapNotify);
+					addView(sv);
+					views.add(sv);
+					sv.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+						@Override
+						public void onGlobalLayout() {
+							sv.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+							if(sv.getHeight()>spaceLeftForSystems) {
+								removeView(sv);
+								views.remove(sv);
+								currentLastSystem--;
+								viewIsFull = true;
+								Log.d("CurrentSystem2", currentLastSystem +"");
+							} else {
+								spaceLeftForSystems = spaceLeftForSystems - sv.getHeight();
+							}
+						}
+					});
+					currentLastSystem++;
+					Log.d("CurrentSystem", currentLastSystem +"");
+
+				}
+			});
+		}
+
+	}
+
+	private void showPreviousSystems() {
+		currentLastSystem = currentFirstSystem;
+
+		for(int i = currentLastSystem-1; i>=0 && !viewIsFull; i--) {
+			final int index = i;
+			new Handler(Looper.getMainLooper()).post(new Runnable(){
+
+				public void run() {
+					final SystemView sv = new SystemView(getContext(), score, systems.getSystemAt(index), SeeScoreView.this.assetManager, tapNotify);
+					addView(sv,0);
+					views.add(0,sv);
+					sv.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+						@Override
+						public void onGlobalLayout() {
+							sv.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+							if(sv.getHeight()>spaceLeftForSystems) {
+								removeView(sv);
+								views.remove(sv);
+								currentFirstSystem++;
+								viewIsFull = true;
+								Log.d("CurrentSystem2", currentLastSystem +"");
+							} else {
+								spaceLeftForSystems = spaceLeftForSystems - sv.getHeight();
+							}
+						}
+					});
+					currentFirstSystem--;
+					Log.d("CurrentSystem", currentLastSystem +"");
+
+				}
+			});
+		}
+
 	}
 
 	private List<BarRange> getAllBarRanges()
@@ -352,9 +452,12 @@ public class SeeScoreView extends LinearLayout  {
 		LayoutThread(float displayHeight)
 		{
 			super("LayoutThread");
+			spaceLeftForSystems = spaceHeight;
 			this.displayHeight = displayHeight;
 			aborting = false;
 			views.clear();
+//			numSystems = 0;
+//			currentBar = 0;
 		}
 
 		/**
@@ -371,6 +474,7 @@ public class SeeScoreView extends LinearLayout  {
 				return;
 			Canvas canvas = new Canvas();
 			int numParts = score.numParts();
+//			int numBars = score.numBars();
 			boolean[] parts = new boolean[numParts];
 			for (int i = 0; i < numParts; ++i)
 			{
@@ -380,18 +484,25 @@ public class SeeScoreView extends LinearLayout  {
 			if (displayHeight > 100
 				&& !aborting)
 			{
+				//Old code
 				try
 				{
+					Log.d("SIZES","DPI: " + displayDPI + ", width: " + (getWidth() - 2*kMargin) + ", height: " + displayHeight);
+
 					score.layout(canvas, assetManager, displayDPI, getWidth() - 2*kMargin, displayHeight, parts,
 						new LayoutCallback(){
 					public boolean addSystem(SSystem sys)
 					{
 						if (!aborting)
 							SeeScoreView.this.addSystem(sys);
+
 						return !aborting; // return false to abort layout
 					}
 				},
 				magnification,opt);
+
+
+
 				}
 				catch (NoPartsException e)
 				{
@@ -401,6 +512,19 @@ public class SeeScoreView extends LinearLayout  {
 				{
 					Log.w("sscore", "layout error:" + e);
 				}
+				//New code determining number of Systems
+//				for(int j = 0; j<numParts && numSystems<9; j++) {
+//					while(numSystems<9&&currentBar<numBars) {
+//						numSystems++;
+//						SSystem newSystem = score.layout1System(canvas, assetManager, displayDPI, currentBar,getWidth() - 2*kMargin, displayHeight, j,
+//								magnification);
+//						if (!aborting)
+//							SeeScoreView.this.addSystem(newSystem);
+//						currentBar = newSystem.getBarRange().startBarIndex+newSystem.getBarRange().numBars;
+//					}
+//
+//				}
+
 			}
             if (SeeScoreView.this.layoutCompletionHandler != null) {
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -414,6 +538,8 @@ public class SeeScoreView extends LinearLayout  {
 
 		private boolean aborting;
 		private float displayHeight;
+//		private int numSystems;
+
 	}
 
 	/**
@@ -581,6 +707,54 @@ public class SeeScoreView extends LinearLayout  {
 		return null;
 	}
 
+	public void nextPage() {
+		Log.d("Systems",currentFirstSystem+" - " + currentLastSystem);
+		if (!isAbortingLayout)
+		{
+			if(currentLastSystem <systems.getSize())
+			{
+//				layoutThread.abort();
+//				systems = new SSystemList();
+				removeAllViews();
+				spaceLeftForSystems = spaceHeight;
+				viewIsFull = false;
+				showSystems();
+//				layoutThread = new LayoutThread(screenHeight);
+//				layoutThread.start();
+
+			}
+			else {
+				Toast.makeText(getContext(),"This is the last page of the score",Toast.LENGTH_SHORT).show();
+			}
+		}
+	}
+
+	public void previousPage() {
+		if (!isAbortingLayout)
+		{
+			if(currentFirstSystem > 0)
+			{
+//				layoutThread.abort();
+//				systems = new SSystemList();
+				removeAllViews();
+				spaceLeftForSystems = spaceHeight;
+				viewIsFull = false;
+				showPreviousSystems();
+//				layoutThread = new LayoutThread(screenHeight);
+//				layoutThread.start();
+
+			}
+			else {
+				Toast.makeText(getContext(),"This is the first page of the score",Toast.LENGTH_SHORT).show();
+			}
+		}
+	}
+
+	public void setHeight(int height) {
+		spaceHeight = height;
+		Log.d("Height",height+"");
+	}
+
     private SScore score;
     private AssetManager assetManager;
     private int displayDPI;
@@ -595,4 +769,9 @@ public class SeeScoreView extends LinearLayout  {
     private ZoomNotification zoomNotify;
     private TapNotification tapNotify;
     private Runnable layoutCompletionHandler;
+	private int currentLastSystem;
+	private int currentFirstSystem;
+	private float spaceLeftForSystems;
+	private float spaceHeight;
+	private boolean viewIsFull;
 }

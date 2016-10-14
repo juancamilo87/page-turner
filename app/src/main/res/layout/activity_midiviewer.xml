@@ -36,7 +36,7 @@
         <ScrollView
             android:id="@+id/scrollView1"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_alignParentLeft="true"
             android:layout_alignParentRight="true"
             android:layout_alignWithParentIfMissing="false"
@@ -62,65 +62,6 @@
             android:id="@+id/beatText"
             android:singleLine="true"
             android:background="#00000000" />
-
-        <TextView
-            android:id="@+id/zoomLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentTop="false"
-            android:singleLine="true"
-            android:textStyle="normal"
-            android:layout_alignParentBottom="false"
-            android:text="scale: 1.0"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:layout_alignParentEnd="true"
-            android:layout_above="@+id/tempoText"
-            android:textSize="16sp">
-        </TextView>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="Tempo:"
-            android:id="@+id/tempoLabel"
-            android:textStyle="normal"
-            android:singleLine="true"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="false"
-            android:layout_alignTop="@id/tempoSlider"
-            android:focusable="false"
-            android:layout_marginTop="8dp" />
-
-        <SeekBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/tempoSlider"
-            android:max="100"
-            android:layout_alignParentBottom="true"
-            android:layout_toRightOf="@+id/tempoLabel"
-            android:layout_alignParentRight="false"
-            android:layout_alignParentEnd="false"
-            android:layout_toLeftOf="@+id/tempoText"
-            android:layout_alignBottom="@id/tempoText"
-            android:layout_alignTop="@id/zoomLabel"
-            android:progress="50"
-            android:clickable="true" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:text="80 BPM"
-            android:id="@+id/tempoText"
-            android:textStyle="normal"
-            android:singleLine="true"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentEnd="false"
-            android:layout_alignParentRight="true"
-            android:layout_marginBottom="5dp" />
     </RelativeLayout>
     <LinearLayout
         android:id="@+id/test_layout"

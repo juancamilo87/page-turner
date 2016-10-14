@@ -10,6 +10,7 @@ import android.text.Html;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -255,7 +256,7 @@ public class MidiViewerActivity extends Activity {
         ssview = new SeeScoreView(this, getAssets(), new SeeScoreView.ZoomNotification(){
 
             public void zoom(float scale) {
-                showZoom(scale);
+//                showZoom(scale);
                 magnification = scale;
             }
 
@@ -283,57 +284,99 @@ public class MidiViewerActivity extends Activity {
         hideBeat();
         sheetScrollView = (ScrollView) findViewById(R.id.scrollView1);
         sheetScrollView.addView(ssview);
-        sheetScrollView.setOnTouchListener(new View.OnTouchListener(){
-
+        final ViewTreeObserver vto = sheetScrollView.getViewTreeObserver();
+        vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
-            public boolean onTouch(View arg0, MotionEvent event) {
-                return ssview.onTouchEvent(event);
-            }
+            public void onGlobalLayout() {
+                ssview.setHeight(sheetScrollView.getHeight());
+                new Thread(new Runnable(){ // load file on background thread
 
-        });
-        setTempo(kDefaultTempoBPM);
-        SeekBar tempoSlider = (SeekBar) findViewById(R.id.tempoSlider);
-        tempoSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            /**
-             * called on moving the tempo slider. Updates the tempo text and the player tempo if playing
-             */
-            public void onProgressChanged(SeekBar seekBar, int sliderValCents, boolean b) {
-                if (b && currentScore != null)
-                {
-                    if (currentScore.hasDefinedTempo()) {
+                    public void run() {
+
+                        byte[] data = readRawByteArray(getResources().openRawResource(R.raw.totoro));
+
                         try {
-                            double scaling = sliderPercentToScaling(sliderValCents);
-                            Tempo tempo = currentScore.tempoAtStart();
-                            setTempoText((int)(scaling * tempo.bpm + 0.5));
-//                            if (player != null) {
-//                                try {
-//                                    player.updateTempo();
-//                                } catch (Player.PlayerException ex) {
-//                                    System.out.println("Failed to set player tempo " + ex);
-//                                }
-//                            }
+//                    LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
+//                    final SScore score = SScore.loadXMLData(data,loadOptions);
+//                    final SScore score = SScore.loadXMLData(data,null);
+//                    File extDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+//                    File file = new File(extDir,"totoro.mxl");
+
+                            final SScore score = loadMXLFile(data);
+                            new Handler(Looper.getMainLooper()).post(new Runnable(){
+
+                                public void run() {
+                                    if (score != null)
+                                    {
+                                        currentScore = score;
+                                        showScore(score); // update score in SeeScoreView on foreground thread
+                                    }
+                                }
+                            });
+                        } catch (Exception e) {
+                            Log.d("ERROR", "error");
+                            e.printStackTrace();
                         }
-                        catch (ScoreException ex)
-                        {}
-                    } else {
-                        setTempoText(sliderPercentToBPM(sliderValCents));
+
+
                     }
-                } else {
-                    setTempoText(sliderPercentToBPM(sliderValCents));
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
+                }).start();
+                sheetScrollView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
             }
         });
+
+
+//        sheetScrollView.setOnTouchListener(new View.OnTouchListener(){
+//
+//            @Override
+//            public boolean onTouch(View arg0, MotionEvent event) {
+//                return ssview.onTouchEvent(event);
+//            }
+//
+//        });
+//        setTempo(kDefaultTempoBPM);
+//        SeekBar tempoSlider = (SeekBar) findViewById(R.id.tempoSlider);
+//        tempoSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+//            @Override
+//            /**
+//             * called on moving the tempo slider. Updates the tempo text and the player tempo if playing
+//             */
+//            public void onProgressChanged(SeekBar seekBar, int sliderValCents, boolean b) {
+//                if (b && currentScore != null)
+//                {
+//                    if (currentScore.hasDefinedTempo()) {
+//                        try {
+//                            double scaling = sliderPercentToScaling(sliderValCents);
+//                            Tempo tempo = currentScore.tempoAtStart();
+//                            setTempoText((int)(scaling * tempo.bpm + 0.5));
+////                            if (player != null) {
+////                                try {
+////                                    player.updateTempo();
+////                                } catch (Player.PlayerException ex) {
+////                                    System.out.println("Failed to set player tempo " + ex);
+////                                }
+////                            }
+//                        }
+//                        catch (ScoreException ex)
+//                        {}
+//                    } else {
+//                        setTempoText(sliderPercentToBPM(sliderValCents));
+//                    }
+//                } else {
+//                    setTempoText(sliderPercentToBPM(sliderValCents));
+//                }
+//            }
+//
+//            @Override
+//            public void onStartTrackingTouch(SeekBar seekBar) {
+//
+//            }
+//
+//            @Override
+//            public void onStopTrackingTouch(SeekBar seekBar) {
+//
+//            }
+//        });
 //        if (savedInstanceState != null) // restore state on device rotation avoiding file reload
 //        {
 //            String filePath = savedInstanceState.getString(CURRENT_FILE);
@@ -348,40 +391,9 @@ public class MidiViewerActivity extends Activity {
 //                currentScore = (SScore)o; // onResume updates the ui with this score
 //            }
 //        }
-        showZoom(magnification);
-
-        new Thread(new Runnable(){ // load file on background thread
-
-            public void run() {
-
-                byte[] data = readRawByteArray(getResources().openRawResource(R.raw.totoro));
-
-                try {
-//                    LoadOptions loadOptions = new LoadOptions(LicenceKeyInstance.SeeScoreLibKey, true);
-//                    final SScore score = SScore.loadXMLData(data,loadOptions);
-//                    final SScore score = SScore.loadXMLData(data,null);
-//                    File extDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-//                    File file = new File(extDir,"totoro.mxl");
-
-                    final SScore score = loadMXLFile(data);
-                    new Handler(Looper.getMainLooper()).post(new Runnable(){
-
-                        public void run() {
-                            if (score != null)
-                            {
-                                currentScore = score;
-                                showScore(score); // update score in SeeScoreView on foreground thread
-                            }
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.d("ERROR", "error");
-                    e.printStackTrace();
-                }
+//        showZoom(magnification);
 
 
-            }
-        }).start();
 
         Log.d("Done","Done");
     }
@@ -495,23 +507,23 @@ public class MidiViewerActivity extends Activity {
         sheet.callOnDraw();
     }
 
-    /** display the current zoom value in the TextView label */
-    private void showZoom(float scale) {
-        TextView zoomText = (TextView)findViewById(R.id.zoomLabel);
-        NumberFormat nf = NumberFormat.getNumberInstance();
-        nf.setMaximumFractionDigits(2);
-        zoomText.setText("scale: "+nf.format(scale));
-    }
+//    /** display the current zoom value in the TextView label */
+//    private void showZoom(float scale) {
+//        TextView zoomText = (TextView)findViewById(R.id.zoomLabel);
+//        NumberFormat nf = NumberFormat.getNumberInstance();
+//        nf.setMaximumFractionDigits(2);
+//        zoomText.setText("scale: "+nf.format(scale));
+//    }
 
     private void hideBeat() {
         TextView beatText = (TextView) findViewById(R.id.beatText);
         beatText.setVisibility(TextView.INVISIBLE);
     }
 
-    private void setTempoText(int tempoVal) {
-        TextView tempoText = (TextView) findViewById(R.id.tempoText);
-        tempoText.setText("" + tempoVal + " BPM");
-    }
+//    private void setTempoText(int tempoVal) {
+//        TextView tempoText = (TextView) findViewById(R.id.tempoText);
+//        tempoText.setText("" + tempoVal + " BPM");
+//    }
 
     private double sliderPercentToScaling(int percent) {
         return kMinTempoScaling + (percent/100.0) * (kMaxTempoScaling - kMinTempoScaling);
@@ -521,10 +533,10 @@ public class MidiViewerActivity extends Activity {
         return kMinTempoBPM + (int)((percent/100.0) * (kMaxTempoBPM - kMinTempoBPM));
     }
 
-    private void setTempo(int bpm) {
-        setTempoSliderValPercent(bpmToSliderPercent(bpm));
-        setTempoText(bpm);
-    }
+//    private void setTempo(int bpm) {
+//        setTempoSliderValPercent(bpmToSliderPercent(bpm));
+//        setTempoText(bpm);
+//    }
 
     private void setTempoSliderValPercent(int percent) {
         SeekBar tempoSlider = (SeekBar) findViewById(R.id.tempoSlider);
@@ -550,20 +562,22 @@ public class MidiViewerActivity extends Activity {
         });
         hideBeat();
 //        setPlayButtonImage(PlayPause.play); // show play in menu
-        showTranspose(score);
+//        showTranspose(score);
+        //TODO: Trim score to viewable score
+        
         ssview.setScore(score, magnification); // relayout after transpose
         showTitle(score);
         // set tempo slider to default tempo
-        if (currentScore.hasDefinedTempo()) {
-            try {
-                Tempo tempo = currentScore.tempoAtStart();
-                setTempoScaling(kDefaultTempoScaling, tempo.bpm);
-            }
-            catch (ScoreException ex)
-            {}
-        } else {
-            setTempo(kDefaultTempoBPM);
-        }
+//        if (currentScore.hasDefinedTempo()) {
+//            try {
+//                Tempo tempo = currentScore.tempoAtStart();
+//                setTempoScaling(kDefaultTempoScaling, tempo.bpm);
+//            }
+//            catch (ScoreException ex)
+//            {}
+//        } else {
+////            setTempo(kDefaultTempoBPM);
+//        }
     }
 
     /**
@@ -592,10 +606,10 @@ public class MidiViewerActivity extends Activity {
         titleLabel.setText(titleText(score));
     }
 
-    private void setTempoScaling(double tempoScaling, int nominalBPM) {
-        setTempoSliderValPercent(scalingToSliderPercent(tempoScaling ));
-        setTempoText(scalingToBPM(tempoScaling, nominalBPM));
-    }
+//    private void setTempoScaling(double tempoScaling, int nominalBPM) {
+//        setTempoSliderValPercent(scalingToSliderPercent(tempoScaling ));
+//        setTempoText(scalingToBPM(tempoScaling, nominalBPM));
+//    }
 
     private int scalingToSliderPercent(double scaling) {
         return (int)(0.5+(100 * ((scaling - kMinTempoScaling) / (kMaxTempoScaling - kMinTempoScaling))));
@@ -718,19 +732,21 @@ public class MidiViewerActivity extends Activity {
     }
 
     private void testOne(){
-        int numBars = currentScore.numBars();
-        Toast.makeText(this, "The number of bars is: " + numBars,Toast.LENGTH_SHORT).show();
+//        int numBars = currentScore.numBars();
+//        Toast.makeText(this, "The number of bars is: " + numBars,Toast.LENGTH_SHORT).show();
+        ssview.previousPage();
     }
 
     private int testNumber = 0;
 
     private void testTwo() {
-        testNumber++;
-        if(testNumber >= currentScore.numBars())
-            testNumber = 1;
-        if(!ssview.setCursorAtBar(testNumber, SeeScoreView.CursorType.box,1000)) {
-            Toast.makeText(this, "Fail",Toast.LENGTH_SHORT).show();
-        }
+//        testNumber++;
+//        if(testNumber >= currentScore.numBars())
+//            testNumber = 1;
+//        if(!ssview.setCursorAtBar(testNumber, SeeScoreView.CursorType.box,1000)) {
+//            Toast.makeText(this, "Fail",Toast.LENGTH_SHORT).show();
+//        }
+        ssview.nextPage();
     }
 
     private int testNumber2 = 0;
