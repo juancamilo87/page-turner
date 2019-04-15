@@ -1,15 +1,21 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-android'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion '25.0.0'
+    compileSdkVersion 28
+    buildToolsVersion '28.0.3'
 
     defaultConfig {
         applicationId "co.wlue.pageturner"
-        minSdkVersion 17
-        targetSdkVersion 21
+        minSdkVersion 19
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
+
+//        ndk {
+//            abiFilters "armeabi-v7a", "x86", "armeabi", "mips"
+//        }
     }
 
     buildTypes {
@@ -21,13 +27,28 @@ android {
             debuggable true
         }
     }
+
+    //To be able to run native libraries in the emulator
+//    splits {
+//        abi {
+//            enable true
+//            reset()
+//            include "armeabi-v7a", "x86", "armeabi", "mips"
+//            universalApk true
+//        }
+//
+//    }
+
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:24.2.1'
-//    compile 'com.github.pdrogfer:MidiDroid:v1.0'
-    compile project(':libs:seescore')
-
-    testCompile 'junit:junit:4.12'
+    api fileTree(include: ['*.jar'], dir: 'libs')
+    api 'com.android.support:appcompat-v7:28.0.0'
+    //    compile 'com.github.pdrogfer:MidiDroid:v1.0'
+    testImplementation 'junit:junit:4.12'
+    implementation project(':seescore')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+repositories {
+    mavenCentral()
 }

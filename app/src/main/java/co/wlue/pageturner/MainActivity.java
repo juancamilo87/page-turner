@@ -5,8 +5,8 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
 import android.util.Log;
 import android.view.Menu;
@@ -25,7 +25,7 @@ import co.wlue.pageturner.fft.RealDoubleFFT;
 import co.wlue.pageturner.utils.FixedDoubleStack;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends AppCompatActivity {
 
 
     public static final int numberOfOvertones = 5;
@@ -42,8 +42,6 @@ public class MainActivity extends ActionBarActivity {
     private ArrayList<Double[]> frequenciesWithOvertones;
     private String[] noteNames;
     private Switch methodSelector;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
