@@ -2,7 +2,7 @@ package co.wlue.pageturner
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatActivity
 import co.wlue.pageturner.utils.loadMXLFromRes
 import kotlinx.android.synthetic.main.first_activity.*
 import uk.co.dolphin_com.seescoreandroid.CursorView
